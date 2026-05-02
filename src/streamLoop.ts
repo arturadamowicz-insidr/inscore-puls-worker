@@ -71,9 +71,18 @@ export async function syncRules(): Promise<{ changed: boolean; hash: string; cou
 export async function startStreamLoop() {
   let backoffMs = 1000;
 
-  // periodic rule resync
-  setInterval(() => {
-    syncRules().catch(err => logger.error({ err: String(err) }, "rule resync failed"));
+  // periodic rule resync — PKG-PULS-02A: skip when disabled to avoid X API side-effects
+  setInterval(async () => {
+    try {
+      const cfg = await getRuntimeConfig();
+      if (!cfg.enabled) {
+        logger.debug("auto-resync skipped: enabled=false");
+        return;
+      }
+      await syncRules();
+    } catch (err) {
+      logger.error({ err: String(err) }, "rule resync failed");
+    }
   }, config.ruleResyncIntervalMs);
 
   while (true) {
