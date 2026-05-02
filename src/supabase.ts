@@ -102,3 +102,12 @@ export async function getPostsToResample(limit: number): Promise<ResamplePost[]>
   if (error) throw error;
   return (data ?? []) as ResamplePost[];
 }
+
+export async function setKillSwitch(tripped: boolean, reason: string | null = null) {
+  const { data, error } = await supabase.rpc("worker_puls_set_kill_switch", {
+    p_tripped: tripped,
+    p_reason: reason,
+  });
+  if (error) throw error;
+  return data as { ok: true; kill_switch_tripped: boolean; stream_status: string };
+}
