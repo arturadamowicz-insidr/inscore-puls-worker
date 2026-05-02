@@ -11,7 +11,7 @@ export async function startOpsServer() {
     if (req.url === "/health") return;
     const secret = req.headers["x-ops-secret"];
     if (secret !== config.opsSecret) {
-      reply.code(401).send({ error: "unauthorized" });
+      return reply.code(401).send({ error: "unauthorized" });
     }
   });
 
@@ -43,13 +43,14 @@ export async function startOpsServer() {
     return { ok: true };
   });
 
-  // PKG-PULS-02A: ręczny override resync zostaje, ale guard enabled=false jest szanowany
-  // (auto-resync z streamLoop również respektuje enabled — patrz streamLoop.ts).
-  // Tutaj pozwalamy operatorowi wymusić resync świadomie nawet przy disabled,
-  // bo to świadoma akcja człowieka. Jeśli chcesz to zablokować, odkomentuj guard:
+  // PKG-PULS-05A: guard enabled=false aktywny.
+  // Jeśli moduł PULS jest globalnie wyłączony, /admin/resync-rules nie woła X API.
+  // Ten endpoint nie może zmusić workera do dotknięcia X gdy enabled=false.
   app.post("/admin/resync-rules", async () => {
-    // const cfg = await getRuntimeConfig();
-    // if (!cfg.enabled) return { ok: false, skipped: "enabled=false" };
+    const cfg = await getRuntimeConfig();
+    if (!cfg.enabled) {
+      return { ok: false, skipped: "enabled=false" };
+    }
     const r = await syncRules();
     return { ok: true, ...r };
   });
